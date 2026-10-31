@@ -13,7 +13,7 @@ function syncScanner(){
  }
  root.classList.toggle('scanner-preview',scannerPreview);root.classList.toggle('scanner-paused',scannerPaused||scannerLookupOpen||busy);root.classList.toggle('scanner-lookup-open',scannerLookupOpen);
  const e=exam(),st=targetStudent(),test=session.mode==='anonymous',group=Gradebook.students(e),present=group.filter(s=>!s.absent),graded=group.filter(s=>resultFor(s));
- $('#scannerModeLabel').textContent=scannerPreview?'LAYOUT PREVIEW · CAMERA OFF':busy?'READING PAPER…':test?'ANONYMOUS VALIDATION':'LIVE SCAN';
+ $('#scannerModeLabel').textContent=scannerPreview?'PREVIEW · CAMERA OFF':busy?'READING…':test?'ANONYMOUS TEST':'LIVE SCAN';
  $('#scannerPerson').innerHTML=test?'<strong>Anonymous test</strong><div class="scanner-identifiers"><span>No student record</span><span>No score or photo saved</span></div>':st?`<strong>${esc(st.name)}</strong><div class="scanner-identifiers"><span>Serial <b>${esc(st.serial)}</b></span><span>ID <b>${esc(st.studentId||'—')}</b></span></div>`:'<strong>This group is complete</strong><div class="scanner-identifiers"><span>Choose another group or a student to rescan.</span></div>';
  $('#scannerContext').textContent=`${e.name} · ${groupLabel()} · ${graded.length}/${present.length} scanned`;
  $('#scannerReplaceNote').textContent=st&&resultFor(st)?'Rescan: the saved score is replaced only after this new scan succeeds.':'';
@@ -32,7 +32,7 @@ function syncScanner(){
 function scannerGeometry(canvas=null){
  const stage=$('#scannerStage');if(!stage)return null;const v=$('#scannerVideo'),t=exam().template;
  const imageWidth=canvas?.width||v?.videoWidth||t.w,imageHeight=canvas?.height||v?.videoHeight||t.h;
- const landscape=stage.clientWidth>stage.clientHeight&&stage.clientHeight<=550;return ScanGeometry.layout({width:stage.clientWidth,height:stage.clientHeight,imageWidth,imageHeight,markers:t.markers,top:landscape?8:$('#scannerHeader')?.offsetHeight||140,bottom:landscape?8:$('#scannerFooter')?.offsetHeight||190,padLeft:landscape?$('#scannerHeader').offsetWidth+12:28,padRight:landscape?$('#scannerFooter').offsetWidth+12:28});
+ const landscape=stage.clientWidth>stage.clientHeight&&stage.clientHeight<=550;return ScanGeometry.layout({width:stage.clientWidth,height:stage.clientHeight,imageWidth,imageHeight,markers:t.markers,top:landscape?8:$('#scannerHeader')?.offsetHeight||140,bottom:landscape?8:$('#scannerFooter')?.offsetHeight||190,padLeft:landscape?$('#scannerHeader').offsetWidth+10:24,padRight:landscape?$('#scannerFooter').offsetWidth+10:24,fit:'cover'});
 }
 function layoutScanner(){
  if(!scannerOpen||!$('#scanner'))return;const g=scannerGeometry();if(!g)return;
