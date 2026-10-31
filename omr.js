@@ -1,0 +1,33 @@
+/* BubbleGrade optical mark recognition. Local image processing; no image upload. */
+(function(root){
+'use strict';
+function template(n=20,options=5){
+ const cols=n<=50?2:4, rows=Math.ceil(n/cols), dx=cols===4?25:38, pitch=cols===4?181:350, dy=Math.min(50,680/rows), r=cols===4?8:11;
+ const t={name:`BubbleGrade ${n}`,w:800,h:1132,options,markers:[[40,40],[760,40],[760,1092],[40,1092]],questions:[],native:true};
+ for(let i=0;i<n;i++){const c=Math.floor(i/rows),row=i%rows;t.questions.push({bubbles:Array.from({length:options},(_,j)=>[cols===4?94+c*pitch+j*dx:145+c*pitch+j*dx,310+row*dy]),r});}return t;
+}
+function solve(A,b){A=A.map((v,i)=>[...v,b[i]]);for(let i=0;i<b.length;i++){let k=i;for(let j=i+1;j<b.length;j++)if(Math.abs(A[j][i])>Math.abs(A[k][i]))k=j;[A[i],A[k]]=[A[k],A[i]];let d=A[i][i];if(Math.abs(d)<1e-9)throw Error('Reference points are too close or on a line.');for(let j=i;j<=b.length;j++)A[i][j]/=d;for(let k=0;k<b.length;k++)if(k!==i){d=A[k][i];for(let j=i;j<=b.length;j++)A[k][j]-=d*A[i][j];}}return A.map(r=>r[b.length]);}
+function homography(src,dst){let A=[],b=[];src.forEach(([x,y],i)=>{let[u,v]=dst[i];A.push([x,y,1,0,0,0,-u*x,-u*y],[0,0,0,x,y,1,-v*x,-v*y]);b.push(u,v);});return [...solve(A,b),1];}
+function project(H,x,y){const d=H[6]*x+H[7]*y+1;return[(H[0]*x+H[1]*y+H[2])/d,(H[3]*x+H[4]*y+H[5])/d];}
+function gray(image){let d=image.data,o=new Uint8Array(image.width*image.height);for(let i=0;i<o.length;i++)o[i]=Math.round(d[i*4]*.299+d[i*4+1]*.587+d[i*4+2]*.114);return o;}
+function markers(image){const{width:w,height:h}=image,g=gray(image),seen=new Uint8Array(w*h),queue=new Int32Array(w*h),out=[];
+ for(let p=0;p<g.length;p++){if(seen[p]||g[p]>95)continue;let head=0,tail=1;queue[0]=p;seen[p]=1;let minX=w,maxX=0,minY=h,maxY=0,count=0;while(head<tail){let v=queue[head++],x=v%w,y=(v/w)|0;count++;minX=Math.min(x,minX);maxX=Math.max(x,maxX);minY=Math.min(y,minY);maxY=Math.max(y,maxY);for(let z of[v-1,v+1,v-w,v+w]){if(z<0||z>=g.length||seen[z]||g[z]>95||Math.abs(z%w-x)>1)continue;seen[z]=1;queue[tail++]=z;}}
+ let bw=maxX-minX+1,bh=maxY-minY+1;if(count>25&&bw>4&&bh>4&&bw<w*.09&&bh<h*.09&&bw/bh>.55&&bw/bh<1.8&&count/(bw*bh)>.73)out.push({x:(minX+maxX)/2,y:(minY+maxY)/2,area:count});}
+ if(out.length<4)return null;let corners=[[0,0],[w,0],[w,h],[0,h]].map(([cx,cy])=>out.filter(p=>(cx===0?p.x<w*.5:p.x>w*.5)&&(cy===0?p.y<h*.5:p.y>h*.5)).sort((a,b)=>Math.hypot(a.x-cx,a.y-cy)-Math.hypot(b.x-cx,b.y-cy))[0]);if(corners.some(p=>!p))return null;const pts=corners.map(p=>[p.x,p.y]);if(Math.min(pts[1][0]-pts[0][0],pts[2][0]-pts[3][0])<w*.24||Math.min(pts[3][1]-pts[0][1],pts[2][1]-pts[1][1])<h*.24)return null;const areas=corners.map(p=>p.area);if(Math.max(...areas)/Math.min(...areas)>5)return null;return pts;
+}
+function analyze(image,t,pts,threshold=.3){
+ const H=homography(t.markers,pts),g=gray(image),w=image.width,h=image.height;
+ function sample(x,y){let[a,b]=project(H,x,y);a=Math.round(a);b=Math.round(b);return a<0||b<0||a>=w||b>=h?255:g[b*w+a];}
+ let clipped=0;
+ const answers=t.questions.map(q=>{const ratios=q.bubbles.map(([x,y],bubbleIndex)=>{const r=q.r;let inside=[],outside=[];for(let iy=-6;iy<=6;iy++)for(let ix=-6;ix<=6;ix++){let d=Math.hypot(ix,iy)/6;if(d<=1){inside.push(sample(x+ix*r*.58/6,y+iy*r*.58/6));}}for(let a=0;a<32;a++){let z=a*Math.PI/16;outside.push(sample(x+Math.cos(z)*r*1.6,y+Math.sin(z)*r*1.6));}outside.sort((a,b)=>a-b);let white=outside[Math.floor(outside.length*.8)],cut=Math.max(40,white-48),dark=inside.filter(v=>v<cut).length/inside.length;let pt=project(H,x,y);if(pt[0]<0||pt[1]<0||pt[0]>=w||pt[1]>=h)clipped++;const baseline=q.baseline?.[bubbleIndex]||0;return Math.max(0,Math.min(1,(dark-baseline)/Math.max(.15,1-baseline)));});const marked=ratios.map((v,i)=>v>=threshold?i:-1).filter(i=>i>=0),s=[...ratios].sort((a,b)=>b-a);let state=marked.length===0?'blank':marked.length>1?'multiple':s[0]<threshold+.15||(s[1]>threshold-.035&&s[0]-s[1]<.3)?'faint':'single';return{detected:marked,ratios,state,resolved:null,credit:null};});if(clipped)throw Error('Some bubbles are outside the image. Include the entire answer area.');return{answers,H};
+}
+function effective(a){if(a.resolved!==null&&a.resolved!==undefined)return a.resolved;return a.state==='single'?a.detected[0]:null;}
+function pending(a){return a.state!=='single'&&a.resolved==null&&a.credit==null;}
+function score(result,key,points=1){let correct=0,unresolved=0;const blanks=result.answers.filter(a=>a.state==='blank'&&a.resolved==null&&a.credit==null);result.answers.forEach(a=>{if(a.credit!=null){correct+=Number(a.credit);return;}if(pending(a)){if(!(a.state==='blank'&&result.blankReviewed))unresolved++;return;}if(effective(a)===key[result.answers.indexOf(a)])correct++;});correct+=result.blankReviewed?Math.min(result.blankCredit||0,blanks.length):0;return{correct,score:Math.round(correct*points*100)/100,max:Math.round(key.length*points*100)/100,pending:unresolved};}
+function svg(t,title='Answer sheet',marks=null){const esc=s=>String(s).replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]));let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${t.w}" height="${t.h}" viewBox="0 0 ${t.w} ${t.h}"><rect width="100%" height="100%" fill="white"/>`;
+ t.markers.forEach(([x,y])=>s+=`<rect x="${x-12}" y="${y-12}" width="24" height="24" fill="black"/>`);
+ s+=`<g fill="#111" font-family="Arial,sans-serif"><text x="74" y="108" font-size="17" font-weight="bold" letter-spacing="2">BUBBLEGRADE</text><text x="74" y="154" font-size="27" font-weight="bold">${esc(title.slice(0,45))}</text><text x="74" y="204" font-size="16">Name: __________________________________</text><text x="74" y="237" font-size="16">Serial / ID: __________________  Lab: __________</text><text x="74" y="271" font-size="13">Fill one bubble completely. Keep all four black squares visible.</text>`;
+ t.questions.forEach((q,i)=>{s+=`<text x="${q.bubbles[0][0]-35}" y="${q.bubbles[0][1]+4}" font-size="13" text-anchor="end">${i+1}</text>`;q.bubbles.forEach(([x,y],j)=>{const fill=marks?.[i]?.includes(j);s+=`<circle cx="${x}" cy="${y}" r="${q.r}" stroke="#222" stroke-width="1.25" fill="${fill?'#111':'white'}"/>`;if(!fill)s+=`<text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="${q.r<10?9:11}" fill="#888">${String.fromCharCode(65+j)}</text>`;});});s+=`<text x="74" y="1048" font-size="12">${t.questions.length} questions · ${t.options} choices · Print at 100% / actual size</text></g></svg>`;return s;
+}
+const api={template,homography,project,markers,analyze,effective,pending,score,svg};if(typeof module!=='undefined')module.exports=api;root.OMR=api;
+})(typeof window!=='undefined'?window:globalThis);
