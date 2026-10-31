@@ -63,7 +63,12 @@ async function startCamera(){
  }catch(err){stopCamera();render();setStatus(err.name==='NotAllowedError'?'Camera permission was denied. Allow it in browser settings or use Upload papers.':'The camera could not start. Close other camera apps or use Upload papers.',true);toast('Camera unavailable. You can still upload photos.');}
 }
 function stopCamera(){clearInterval(timer);timer=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;needsRemoval=false;stableFrames=0;scannerOpen=false;scannerPreview=false;scannerLookupOpen=false;scannerPaused=false;if(typeof closeScannerSurface==='function')closeScannerSurface();}
-function cameraCanvas(max=1500){const v=$('#scannerVideo')||$('#camera');if(!v?.videoWidth)throw Error('Wait for the camera preview to appear.');const c=document.createElement('canvas'),scale=Math.min(1,max/Math.max(v.videoWidth,v.videoHeight));c.width=Math.round(v.videoWidth*scale);c.height=Math.round(v.videoHeight*scale);c.getContext('2d',{willReadFrequently:true}).drawImage(v,0,0,c.width,c.height);return c;}
+function cameraCanvas(max=1500){
+ const v=$('#scannerVideo')||$('#camera');if(!v?.videoWidth)throw Error('Wait for the camera preview to appear.');
+ const stage=scannerOpen?$('#scannerStage'):null,crop=stage?.clientWidth&&stage?.clientHeight?ScanGeometry.cameraCrop(v.videoWidth,v.videoHeight,stage.clientWidth,stage.clientHeight):{x:0,y:0,width:v.videoWidth,height:v.videoHeight};
+ const c=document.createElement('canvas'),scale=Math.min(1,max/Math.max(crop.width,crop.height));c.width=Math.round(crop.width*scale);c.height=Math.round(crop.height*scale);
+ c.getContext('2d',{willReadFrequently:true}).drawImage(v,crop.x,crop.y,crop.width,crop.height,0,0,c.width,c.height);return c;
+}
 function resizedCanvas(c,max){let k=Math.min(1,max/Math.max(c.width,c.height)),d=document.createElement('canvas');d.width=Math.round(c.width*k);d.height=Math.round(c.height*k);d.getContext('2d',{willReadFrequently:true}).drawImage(c,0,0,d.width,d.height);return d;}
 function findPoints(c){let d=resizedCanvas(c,800),p=OMR.markers(d.getContext('2d',{willReadFrequently:true}).getImageData(0,0,d.width,d.height));return p?.map(([x,y])=>[x*c.width/d.width,y*c.height/d.height]);}
 async function autoTick(){
@@ -71,7 +76,7 @@ async function autoTick(){
  try{
  const c=cameraCanvas(),p=findPoints(c),guides=updateScannerTracking(c,p);
  // The paper must leave view even when automatic capture is paused or disabled.
- if(!p){stableFrames=0;lastPts=null;if(needsRemoval&&++absentFrames>=2){needsRemoval=false;absentFrames=0;setStatus('Ready. Check the student above and place the next paper.');}return;}
+ if(!p){stableFrames=0;lastPts=null;if(needsRemoval){if(++absentFrames>=2){needsRemoval=false;absentFrames=0;setStatus('Ready. Check the student above and place the next paper.');}}else if(!scannerPaused&&!scannerLookupOpen)setStatus('Looking for four black squares. Keep them inside the guides and let the camera focus.');return;}
  if(needsRemoval){absentFrames=0;setStatus('Paper saved. Remove it completely before placing the next one.');return;}
  if(session.mode!=='anonymous'&&!targetStudent()){scannerPaused=true;syncScanner();setStatus('This group is complete. Change the group or select a student to rescan.');return;}
  if(!exam().continuous){stableFrames=0;setStatus('Manual capture mode. Check the student, then tap Capture now.');return;}

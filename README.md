@@ -1,4 +1,4 @@
-# BubbleGrade — GitHub Pages edition v4
+# BubbleGrade — GitHub Pages edition v5
 
 Upload ALL 17 files from this folder to your existing repository root, replacing matching files. Keep index.html at the root. Commit the upload, wait for GitHub Pages deployment to complete, then reload the site. Do not clear site data: your browser holds your quizzes and grades.
 
@@ -13,3 +13,11 @@ Choose a quiz, enter its key, import students and mark absences. Students → Vi
 Share quiz / merge scans exchanges quiz setups and combines instructor result files. Everyone can create their own quizzes. Browser storage is local to each device and site address. Back up workspace before moving devices or browsers. Keep rosters, answer keys, result packets and backups out of the public repository.
 
 Browser layout QA used a simulated wide camera. Validate your printed sheet, camera and lighting before official marking. This independent app is not affiliated with ZipGrade.
+
+## v5 automatic capture fix
+
+Camera capture now reads precisely the portrait region shown on screen, instead of the hidden full landscape camera frame. This fixes the spacing rejection that could keep all four guides yellow while the page looked aligned. It also shows a detection/focus message when no four-square set is found.
+
+Upload all 17 extracted files to the repository root, replacing matching files, then Commit changes. Do not delete the old files first. Wait for Pages deployment, close the old scanner tab and reopen the same HTTPS site. Do not clear browser data. Existing quizzes, layouts, rosters and saved grades use the same storage keys.
+
+Verified with generated-camera regression tests and two consecutive automatic browser captures. Actual phone lighting, focus and calibrated paper still need testing.
