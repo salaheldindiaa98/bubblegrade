@@ -13,7 +13,7 @@ function syncScanner(){
  }
  root.classList.toggle('scanner-preview',scannerPreview);root.classList.toggle('scanner-paused',scannerPaused||scannerLookupOpen||busy);root.classList.toggle('scanner-lookup-open',scannerLookupOpen);
  const e=exam(),st=targetStudent(),test=session.mode==='anonymous',group=Gradebook.students(e),present=group.filter(s=>!s.absent),graded=group.filter(s=>resultFor(s));
- $('#scannerModeLabel').textContent=scannerPreview?'PREVIEW · CAMERA OFF':busy?'READING…':test?'ANONYMOUS TEST · v8':'LIVE SCAN · v8';
+ $('#scannerModeLabel').textContent=scannerPreview?'PREVIEW · CAMERA OFF':busy?'READING…':test?'ANONYMOUS TEST · v9':'LIVE SCAN · v9';
  $('#scannerPerson').innerHTML=test?'<strong>Anonymous test</strong><div class="scanner-identifiers"><span>No student record</span><span>No score or photo saved</span></div>':st?`<strong>${esc(st.name)}</strong><div class="scanner-identifiers"><span>Serial <b>${esc(st.serial)}</b></span><span>ID <b>${esc(st.studentId||'—')}</b></span></div>`:'<strong>This group is complete</strong><div class="scanner-identifiers"><span>Choose another group or a student to rescan.</span></div>';
  $('#scannerContext').textContent=`${e.name} · ${groupLabel()} · ${st?'Student '+(group.findIndex(s=>s.id===st.id)+1)+'/'+group.length+' · ':''}${graded.length}/${present.length} scanned`;
  $('#scannerReplaceNote').textContent=st?resultFor(st)?'Already scanned · choose Next or Rescan to replace this score.':st.absent?'Marked absent · choose Next or Mark present.':'':'';
