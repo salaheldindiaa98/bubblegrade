@@ -59,7 +59,7 @@ async function startCamera(){
  if(!navigator.mediaDevices?.getUserMedia){toast('Camera needs a secure HTTPS browser. Use your hosted link, or Upload papers.');return;}
  scannerOpen=true;scannerPreview=false;scannerPaused=false;scannerLookupOpen=false;autoReadyAt=Date.now()+1800;render();requestScannerFullscreen();
  try{stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:window.innerHeight>window.innerWidth?1080:1920},height:{ideal:window.innerHeight>window.innerWidth?1920:1080}}});
- if(!scannerOpen){stream.getTracks().forEach(t=>t.stop());stream=null;return;}needsRemoval=false;lastPts=null;stableFrames=0;render();timer=setInterval(autoTick,650);setStatus('Check the student above. Align the four printed squares and hold steady to scan.');
+ if(!scannerOpen){stream.getTracks().forEach(t=>t.stop());stream=null;return;}needsRemoval=false;lastPts=null;stableFrames=0;render();timer=setInterval(autoTick,650);setStatus('Check the student above. Place each printed square anywhere inside its large box and hold steady.');
  }catch(err){stopCamera();render();setStatus(err.name==='NotAllowedError'?'Camera permission was denied. Allow it in browser settings or use Upload papers.':'The camera could not start. Close other camera apps or use Upload papers.',true);toast('Camera unavailable. You can still upload photos.');}
 }
 function stopCamera(){clearInterval(timer);timer=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;needsRemoval=false;stableFrames=0;scannerOpen=false;scannerPreview=false;scannerLookupOpen=false;scannerPaused=false;if(typeof closeScannerSurface==='function')closeScannerSurface();}
@@ -72,7 +72,7 @@ function cameraCanvas(max=1500){
 function resizedCanvas(c,max){let k=Math.min(1,max/Math.max(c.width,c.height)),d=document.createElement('canvas');d.width=Math.round(c.width*k);d.height=Math.round(c.height*k);d.getContext('2d',{willReadFrequently:true}).drawImage(c,0,0,d.width,d.height);return d;}
 function findPoints(c,guided=false){
  const d=resizedCanvas(c,800),image=d.getContext('2d',{willReadFrequently:true}).getImageData(0,0,d.width,d.height),g=guided?scannerGeometry(c):null;
- const hints=g?{targets:g.targets.map(([x,y])=>[(x-g.video.x)/g.video.scale*d.width/c.width,(y-g.video.y)/g.video.scale*d.height/c.height]),radius:g.half/g.video.scale*d.width/c.width*2.5}:null;
+ const hints=g?{targets:g.targets.map(([x,y])=>[(x-g.video.x)/g.video.scale*d.width/c.width,(y-g.video.y)/g.video.scale*d.height/c.height]),radius:g.searchRadius/g.video.scale*d.width/c.width}:null;
  const p=hints?OMR.guidedMarkers(image,hints):OMR.markers(image);return p?.map(([x,y])=>[x*c.width/d.width,y*c.height/d.height]);
 }
 async function autoTick(){

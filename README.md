@@ -1,4 +1,4 @@
-# BubbleGrade — GitHub Pages edition v6
+# BubbleGrade — GitHub Pages edition v7
 
 Upload ALL 17 files from this folder to your existing repository root, replacing matching files. Keep index.html at the root. Commit the upload, wait for GitHub Pages deployment to complete, then reload the site. Do not clear site data: your browser holds your quizzes and grades.
 
@@ -29,3 +29,11 @@ Live capture uses local contrast near the calibrated corner targets and selects 
 Upload all 17 extracted files to the repository root, replacing matching names; no deletion first. Commit, wait for GitHub Pages, close the old tab and reopen the same site. Confirm LIVE SCAN · v6 at the top. Keep browser data: existing storage keys and scores are retained.
 
 Validated with blurred gray generated sheets, existing optical/queue/export regressions, and local browser replay of screenshot pixels. Replay detected four corners and captured after moving the paper upward. This verifies detection and capture; it is not a physical-phone test or a validation of the actual student's grade. No supplied screenshots, roster records or quiz data are included in this package.
+
+## v7: larger, more forgiving corner boxes
+
+The tiny center squares are removed. Put each printed square anywhere inside its large numbered box; centering is unnecessary. The visible box is exactly the accepted area. Targets stay on-screen and outside controls. A 390×844 portrait test uses 128×128 boxes instead of 56×56, and a vertically displaced paper automatically scanned twice in the browser test.
+
+Upload all 17 files into your existing repository root, replacing matching files. No deletion first. Commit, wait for Pages deployment and reopen the same site. Confirm LIVE SCAN · v7. Do not clear browser data: existing quizzes and results use the same storage keys.
+
+Geometry, detection, queue, scoring and export checks pass. Physical-phone alignment should be retested.
