@@ -15,6 +15,57 @@ function markers(image){const{width:w,height:h}=image,g=gray(image),seen=new Uin
  let bw=maxX-minX+1,bh=maxY-minY+1;if(count>25&&bw>4&&bh>4&&bw<w*.09&&bh<h*.09&&bw/bh>.55&&bw/bh<1.8&&count/(bw*bh)>.73)out.push({x:(minX+maxX)/2,y:(minY+maxY)/2,area:count});}
  if(out.length<4)return null;let corners=[[0,0],[w,0],[w,h],[0,h]].map(([cx,cy])=>out.filter(p=>(cx===0?p.x<w*.5:p.x>w*.5)&&(cy===0?p.y<h*.5:p.y>h*.5)).sort((a,b)=>Math.hypot(a.x-cx,a.y-cy)-Math.hypot(b.x-cx,b.y-cy))[0]);if(corners.some(p=>!p))return null;const pts=corners.map(p=>[p.x,p.y]);if(Math.min(pts[1][0]-pts[0][0],pts[2][0]-pts[3][0])<w*.24||Math.min(pts[3][1]-pts[0][1],pts[2][1]-pts[1][1])<h*.24)return null;const areas=corners.map(p=>p.area);if(Math.max(...areas)/Math.min(...areas)>5)return null;return pts;
 }
+// Live camera: search near the four calibrated targets and adapt to local contrast.
+// A fixed dark cutoff misses softened gray registration squares in real phone video.
+function guidedMarkers(image,{targets,radius}){
+ const {width:w,height:h}=image,g=gray(image),groups=[];
+ for(const [tx,ty] of targets){
+  const x0=Math.max(0,Math.floor(tx-radius)),y0=Math.max(0,Math.floor(ty-radius)),x1=Math.min(w-1,Math.ceil(tx+radius)),y1=Math.min(h-1,Math.ceil(ty+radius)),rw=x1-x0+1,rh=y1-y0+1;
+  const hist=new Uint32Array(256);let total=0,sum=0;for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const v=g[y*w+x];hist[v]++;total++;sum+=v;}
+  // Otsu threshold in this small window separates the mark from its nearby paper.
+  let n=0,s=0,best=0,cut=0;for(let v=0;v<255;v++){n+=hist[v];s+=v*hist[v];if(!n||n===total)continue;const variance=n*(total-n)*(s/n-(sum-s)/(total-n))**2;if(variance>best){best=variance;cut=v;}}
+  let bright=255,acc=0;for(let v=0;v<256;v++){acc+=hist[v];if(acc>=total*.8){bright=v;break;}}
+  cut=Math.min(cut,bright-32);if(!best||bright-cut<14)return null;
+  const candidates=[];
+  for(const threshold of [cut,cut-16,cut-32,cut-48,cut-64]){
+  if(threshold<0)continue;
+  // Close tiny gaps caused by blur/compression while retaining solid-square shape checks.
+  const mask=new Uint8Array(rw*rh),dilated=new Uint8Array(rw*rh),closed=new Uint8Array(rw*rh);
+  for(let y=0;y<rh;y++)for(let x=0;x<rw;x++)mask[y*rw+x]=g[(y+y0)*w+x+x0]<=threshold?1:0;
+  for(let y=2;y<rh-2;y++)for(let x=2;x<rw-2;x++){let value=0;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)value|=mask[(y+dy)*rw+x+dx];dilated[y*rw+x]=value;}
+  for(let y=2;y<rh-2;y++)for(let x=2;x<rw-2;x++){let value=1;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)value&=dilated[(y+dy)*rw+x+dx];closed[y*rw+x]=value;}
+  const seen=new Uint8Array(rw*rh),queue=new Int32Array(rw*rh);
+  for(let j=0;j<seen.length;j++){
+   if(seen[j]||!closed[j])continue;
+   let head=0,tail=1,count=0,minX=rw,maxX=0,minY=rh,maxY=0,dark=0;queue[0]=j;seen[j]=1;
+   while(head<tail){const q=queue[head++],x=q%rw,y=q/rw|0;count++;dark+=g[(y+y0)*w+x+x0];minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+    for(const [nx,ny] of [[x-1,y],[x+1,y],[x,y-1],[x,y+1]]){if(nx<0||ny<0||nx>=rw||ny>=rh)continue;const z=ny*rw+nx;if(!seen[z]&&closed[z]){seen[z]=1;queue[tail++]=z;}}
+   }
+   const bw=maxX-minX+1,bh=maxY-minY+1,fill=count/(bw*bh),aspect=bw/bh,cx=x0+(minX+maxX)/2,cy=y0+(minY+maxY)/2;
+   if(count<16||bw<4||bh<4||bw>radius*.8||bh>radius*.8||aspect<.55||aspect>1.8||fill<.5||minX===0||minY===0||maxX===rw-1||maxY===rh-1)continue;
+   // Hollow printed boxes and low-contrast patches must not become registration marks.
+   let ring=0,rn=0;const pad=Math.max(2,Math.round(Math.min(bw,bh)*.35));for(let y=Math.max(y0,minY+y0-pad);y<=Math.min(y1,maxY+y0+pad);y++)for(let x=Math.max(x0,minX+x0-pad);x<=Math.min(x1,maxX+x0+pad);x++){if(x<minX+x0||x>maxX+x0||y<minY+y0||y>maxY+y0){ring+=g[y*w+x];rn++;}}
+   const contrast=ring/Math.max(1,rn)-dark/count;if(contrast<20)continue;
+   candidates.push({x:cx,y:cy,area:count,quality:fill+Math.min(1,contrast/80)-Math.hypot(cx-tx,cy-ty)/radius});
+  }
+  }
+  candidates.sort((a,b)=>b.quality-a.quality);const unique=[];for(const v of candidates)if(!unique.some(a=>Math.hypot(v.x-a.x,v.y-a.y)<Math.max(4,Math.sqrt(Math.min(v.area,a.area))*.5)))unique.push(v);
+  if(!unique.length)return null;groups.push(unique.slice(0,8));
+ }
+ // Select a coherent set together: an isolated barcode fragment must not beat
+ // the real bottom square merely because it is closer to a target.
+ let chosen=null,bestQuality=-Infinity;
+ for(const a of groups[0])for(const b of groups[1])for(const c of groups[2])for(const d of groups[3]){
+  const set=[a,b,c,d],areas=set.map(v=>v.area),areaRatio=Math.max(...areas)/Math.min(...areas);
+  if(areaRatio>5||Math.min(b.x-a.x,c.x-d.x)<w*.24||Math.min(d.y-a.y,c.y-b.y)<h*.24)continue;
+  const top=Math.hypot(b.x-a.x,b.y-a.y),bottom=Math.hypot(c.x-d.x,c.y-d.y),left=Math.hypot(d.x-a.x,d.y-a.y),right=Math.hypot(c.x-b.x,c.y-b.y);
+  const skew=Math.abs(Math.log(top/bottom))+Math.abs(Math.log(left/right))+Math.abs((b.y-a.y)-(c.y-d.y))/Math.max(left,right);
+  const quality=set.reduce((n,v)=>n+v.quality,0)/4-2*skew-.2*(areaRatio-1);
+  if(quality>bestQuality){bestQuality=quality;chosen=set.map(v=>[v.x,v.y]);}
+ }
+ return chosen;
+}
+
 function analyze(image,t,pts,threshold=.3){
  const H=homography(t.markers,pts),g=gray(image),w=image.width,h=image.height;
  function sample(x,y){let[a,b]=project(H,x,y);a=Math.round(a);b=Math.round(b);return a<0||b<0||a>=w||b>=h?255:g[b*w+a];}
@@ -29,5 +80,5 @@ function svg(t,title='Answer sheet',marks=null){const esc=s=>String(s).replace(/
  s+=`<g fill="#111" font-family="Arial,sans-serif"><text x="74" y="108" font-size="17" font-weight="bold" letter-spacing="2">BUBBLEGRADE</text><text x="74" y="154" font-size="27" font-weight="bold">${esc(title.slice(0,45))}</text><text x="74" y="204" font-size="16">Name: __________________________________</text><text x="74" y="237" font-size="16">Serial / ID: __________________  Lab: __________</text><text x="74" y="271" font-size="13">Fill one bubble completely. Keep all four black squares visible.</text>`;
  t.questions.forEach((q,i)=>{s+=`<text x="${q.bubbles[0][0]-35}" y="${q.bubbles[0][1]+4}" font-size="13" text-anchor="end">${i+1}</text>`;q.bubbles.forEach(([x,y],j)=>{const fill=marks?.[i]?.includes(j);s+=`<circle cx="${x}" cy="${y}" r="${q.r}" stroke="#222" stroke-width="1.25" fill="${fill?'#111':'white'}"/>`;if(!fill)s+=`<text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="${q.r<10?9:11}" fill="#888">${String.fromCharCode(65+j)}</text>`;});});s+=`<text x="74" y="1048" font-size="12">${t.questions.length} questions · ${t.options} choices · Print at 100% / actual size</text></g></svg>`;return s;
 }
-const api={template,homography,project,markers,analyze,effective,pending,score,svg};if(typeof module!=='undefined')module.exports=api;root.OMR=api;
+const api={template,homography,project,markers,guidedMarkers,analyze,effective,pending,score,svg};if(typeof module!=='undefined')module.exports=api;root.OMR=api;
 })(typeof window!=='undefined'?window:globalThis);

@@ -1,4 +1,4 @@
-# BubbleGrade — GitHub Pages edition v5
+# BubbleGrade — GitHub Pages edition v6
 
 Upload ALL 17 files from this folder to your existing repository root, replacing matching files. Keep index.html at the root. Commit the upload, wait for GitHub Pages deployment to complete, then reload the site. Do not clear site data: your browser holds your quizzes and grades.
 
@@ -21,3 +21,11 @@ Camera capture now reads precisely the portrait region shown on screen, instead 
 Upload all 17 extracted files to the repository root, replacing matching files, then Commit changes. Do not delete the old files first. Wait for Pages deployment, close the old scanner tab and reopen the same HTTPS site. Do not clear browser data. Existing quizzes, layouts, rosters and saved grades use the same storage keys.
 
 Verified with generated-camera regression tests and two consecutive automatic browser captures. Actual phone lighting, focus and calibrated paper still need testing.
+
+## v6: gray / blurred registration square detection
+
+Live capture uses local contrast near the calibrated corner targets and selects a coherent four-square set. This handles gray, softened squares instead of requiring a fixed black pixel value. Barcode and middle-square distractors are checked. Displaced paper receives a detected-corner count and movement hint. Automatic capture still requires all four targets matched and a steady paper.
+
+Upload all 17 extracted files to the repository root, replacing matching names; no deletion first. Commit, wait for GitHub Pages, close the old tab and reopen the same site. Confirm LIVE SCAN · v6 at the top. Keep browser data: existing storage keys and scores are retained.
+
+Validated with blurred gray generated sheets, existing optical/queue/export regressions, and local browser replay of screenshot pixels. Replay detected four corners and captured after moving the paper upward. This verifies detection and capture; it is not a physical-phone test or a validation of the actual student's grade. No supplied screenshots, roster records or quiz data are included in this package.

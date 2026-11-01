@@ -70,11 +70,15 @@ function cameraCanvas(max=1500){
  c.getContext('2d',{willReadFrequently:true}).drawImage(v,crop.x,crop.y,crop.width,crop.height,0,0,c.width,c.height);return c;
 }
 function resizedCanvas(c,max){let k=Math.min(1,max/Math.max(c.width,c.height)),d=document.createElement('canvas');d.width=Math.round(c.width*k);d.height=Math.round(c.height*k);d.getContext('2d',{willReadFrequently:true}).drawImage(c,0,0,d.width,d.height);return d;}
-function findPoints(c){let d=resizedCanvas(c,800),p=OMR.markers(d.getContext('2d',{willReadFrequently:true}).getImageData(0,0,d.width,d.height));return p?.map(([x,y])=>[x*c.width/d.width,y*c.height/d.height]);}
+function findPoints(c,guided=false){
+ const d=resizedCanvas(c,800),image=d.getContext('2d',{willReadFrequently:true}).getImageData(0,0,d.width,d.height),g=guided?scannerGeometry(c):null;
+ const hints=g?{targets:g.targets.map(([x,y])=>[(x-g.video.x)/g.video.scale*d.width/c.width,(y-g.video.y)/g.video.scale*d.height/c.height]),radius:g.half/g.video.scale*d.width/c.width*2.5}:null;
+ const p=hints?OMR.guidedMarkers(image,hints):OMR.markers(image);return p?.map(([x,y])=>[x*c.width/d.width,y*c.height/d.height]);
+}
 async function autoTick(){
  if(busy||!stream||$('#modal').open)return;
  try{
- const c=cameraCanvas(),p=findPoints(c),guides=updateScannerTracking(c,p);
+ const c=cameraCanvas(),p=findPoints(c,true),guides=updateScannerTracking(c,p);
  // The paper must leave view even when automatic capture is paused or disabled.
  if(!p){stableFrames=0;lastPts=null;if(needsRemoval){if(++absentFrames>=2){needsRemoval=false;absentFrames=0;setStatus('Ready. Check the student above and place the next paper.');}}else if(!scannerPaused&&!scannerLookupOpen)setStatus('Looking for four black squares. Keep them inside the guides and let the camera focus.');return;}
  if(needsRemoval){absentFrames=0;setStatus('Paper saved. Remove it completely before placing the next one.');return;}
@@ -83,12 +87,12 @@ async function autoTick(){
  if(scannerPaused||scannerLookupOpen){stableFrames=0;lastPts=null;return;}
  if(Date.now()<autoReadyAt){stableFrames=0;lastPts=null;setStatus('Check the displayed student. Capture starts when the paper is aligned and steady.');return;}
  if(!confirmedTarget()){stableFrames=0;return;}
- if(scannerOpen&&!guides.all){stableFrames=0;lastPts=null;setStatus('Place each printed registration square inside its corner target.');return;}
+ if(scannerOpen&&!guides.all){stableFrames=0;lastPts=null;setStatus(guides.hint||'Four squares detected. Move the paper so each square is inside its corner target.');return;}
  if(lastPts&&p.every((v,i)=>Math.hypot(v[0]-lastPts[i][0],v[1]-lastPts[i][1])<c.width*.012))stableFrames++;else stableFrames=0;lastPts=p;
  if(stableFrames>=2){stableFrames=0;await processCapture(c,p,true);}else setStatus('Four corners matched. Hold steady…');
  }catch(err){setStatus(err.message,true);}
 }
-async function capture(){if(busy||!ensureScan())return;try{const c=cameraCanvas(),p=findPoints(c);if(p)await processCapture(c,p);else manualAlign(c);}catch(err){toast(err.message);}}
+async function capture(){if(busy||!ensureScan())return;try{const c=cameraCanvas(),p=findPoints(c,true);if(p)await processCapture(c,p);else manualAlign(c);}catch(err){toast(err.message);}}
 async function processCapture(c,p,automatic=false){
  if(busy||!ensureScan())return;busy=true;if(typeof syncScanner==='function')syncScanner();
  try{

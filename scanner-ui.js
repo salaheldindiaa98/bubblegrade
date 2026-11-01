@@ -13,7 +13,7 @@ function syncScanner(){
  }
  root.classList.toggle('scanner-preview',scannerPreview);root.classList.toggle('scanner-paused',scannerPaused||scannerLookupOpen||busy);root.classList.toggle('scanner-lookup-open',scannerLookupOpen);
  const e=exam(),st=targetStudent(),test=session.mode==='anonymous',group=Gradebook.students(e),present=group.filter(s=>!s.absent),graded=group.filter(s=>resultFor(s));
- $('#scannerModeLabel').textContent=scannerPreview?'PREVIEW · CAMERA OFF':busy?'READING…':test?'ANONYMOUS TEST':'LIVE SCAN';
+ $('#scannerModeLabel').textContent=scannerPreview?'PREVIEW · CAMERA OFF':busy?'READING…':test?'ANONYMOUS TEST · v6':'LIVE SCAN · v6';
  $('#scannerPerson').innerHTML=test?'<strong>Anonymous test</strong><div class="scanner-identifiers"><span>No student record</span><span>No score or photo saved</span></div>':st?`<strong>${esc(st.name)}</strong><div class="scanner-identifiers"><span>Serial <b>${esc(st.serial)}</b></span><span>ID <b>${esc(st.studentId||'—')}</b></span></div>`:'<strong>This group is complete</strong><div class="scanner-identifiers"><span>Choose another group or a student to rescan.</span></div>';
  $('#scannerContext').textContent=`${e.name} · ${groupLabel()} · ${graded.length}/${present.length} scanned`;
  $('#scannerReplaceNote').textContent=st&&resultFor(st)?'Rescan: the saved score is replaced only after this new scan succeeds.':'';
@@ -45,6 +45,9 @@ function updateScannerTracking(c,points){
  const g=scannerGeometry(c);if(!g)return{all:true};const m=ScanGeometry.match(points,g),root=$('#scanner');
  root.classList.toggle('corners-matched',m.all&&!needsRemoval&&!scannerPaused&&!scannerLookupOpen);
  m.matched.forEach((hit,i)=>{$(`[data-corner="${i}"]`).classList.toggle('matched',hit);const dot=$(`[data-detected="${i}"]`),p=m.points[i];dot.classList.toggle('hidden',!p);if(p){dot.style.left=p[0]+'px';dot.style.top=p[1]+'px';}});
+ if(points&&!m.all){const dx=m.points.reduce((n,p,i)=>n+p[0]-g.targets[i][0],0)/4,dy=m.points.reduce((n,p,i)=>n+p[1]-g.targets[i][1],0)/4,count=m.matched.filter(Boolean).length;
+ const move=Math.abs(dy)>g.half*.45?(dy>0?'Move the paper up a little.':'Move the paper down a little.'):Math.abs(dx)>g.half*.45?(dx>0?'Move the paper left a little.':'Move the paper right a little.'):'Place each square inside its corner target.';
+ m.hint=`Four squares detected · ${count}/4 aligned. ${move}`;}
  return m;
 }
 function setScannerStatus(s,error=false){const el=$('#scannerStatus');if(!el)return;el.textContent=scannerPreview?'Layout preview only — camera off.':scannerLookupOpen?'Capture paused while you choose a student.':scannerPaused?'Capture paused. Check the student, then tap Resume.':s;el.classList.toggle('scanner-error',error);}
