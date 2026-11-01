@@ -17,7 +17,7 @@ function markers(image){const{width:w,height:h}=image,g=gray(image),seen=new Uin
 }
 // Live camera: search near the four calibrated targets and adapt to local contrast.
 // A fixed dark cutoff misses softened gray registration squares in real phone video.
-function guidedMarkers(image,{targets,radius}){
+function guidedMarkers(image,{targets,radius,minSpan=.24}){
  const {width:w,height:h}=image,g=gray(image),groups=[];
  for(const [tx,ty] of targets){
   const x0=Math.max(0,Math.floor(tx-radius)),y0=Math.max(0,Math.floor(ty-radius)),x1=Math.min(w-1,Math.ceil(tx+radius)),y1=Math.min(h-1,Math.ceil(ty+radius)),rw=x1-x0+1,rh=y1-y0+1;
@@ -57,7 +57,7 @@ function guidedMarkers(image,{targets,radius}){
  let chosen=null,bestQuality=-Infinity;
  for(const a of groups[0])for(const b of groups[1])for(const c of groups[2])for(const d of groups[3]){
   const set=[a,b,c,d],areas=set.map(v=>v.area),areaRatio=Math.max(...areas)/Math.min(...areas);
-  if(areaRatio>5||Math.min(b.x-a.x,c.x-d.x)<w*.24||Math.min(d.y-a.y,c.y-b.y)<h*.24)continue;
+  if(areaRatio>5||Math.min(b.x-a.x,c.x-d.x)<w*minSpan||Math.min(d.y-a.y,c.y-b.y)<h*minSpan)continue;
   const top=Math.hypot(b.x-a.x,b.y-a.y),bottom=Math.hypot(c.x-d.x,c.y-d.y),left=Math.hypot(d.x-a.x,d.y-a.y),right=Math.hypot(c.x-b.x,c.y-b.y);
   const skew=Math.abs(Math.log(top/bottom))+Math.abs(Math.log(left/right))+Math.abs((b.y-a.y)-(c.y-d.y))/Math.max(left,right);
   const quality=set.reduce((n,v)=>n+v.quality,0)/4-2*skew-.2*(areaRatio-1);

@@ -25,7 +25,7 @@ async function applyScanSession(form){
  if(mode!=='anonymous'&&!target)throw Error(mode==='student'?'Select a student in this group.':'This group has no waiting papers. Choose another group or Specific student / rescan.');
  const source=form.dataset.source;state.instructor=instructor;e.scanGroup=g;
  scannerPaused=false;scannerLookupOpen=false;
- session={active:true,mode,studentId:mode==='student'?target.id:null,confirmed:mode==='anonymous'?'anonymous':target.id,source};stableFrames=0;lastPts=null;autoReadyAt=Date.now()+1800;
+ session={active:true,mode,studentId:mode==='student'?target.id:null,confirmed:mode==='anonymous'?'anonymous':target.id,source};stableFrames=0;lastPts=null;autoReadyAt=Date.now()+1000;
  statusMessage=mode==='anonymous'?'Anonymous validation: no score or photo will be saved.':'Student confirmed. Place the matching paper in view.';persist();closeModal();view='scan';location.hash='scan';render();
  if(source==='camera'){stopCamera();await startCamera();}
  else if(source==='upload'){stopCamera();render();$('#imageInput').click();}

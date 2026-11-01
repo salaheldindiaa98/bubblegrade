@@ -15,10 +15,19 @@ function layout({width,height,imageWidth,imageHeight,markers,top=140,bottom=190,
 }
 // Pixel region shown by centered object-fit: cover. Crop before reducing resolution
 // so marker size/spacing checks operate on the same area the instructor sees.
-function cameraCrop(imageWidth,imageHeight,width,height){
+function cameraCrop(imageWidth,imageHeight,width,height,fit='cover'){
+ if(fit==='contain')return{x:0,y:0,width:imageWidth,height:imageHeight};
  const scale=Math.max(width/imageWidth,height/imageHeight),w=width/scale,h=height/scale;
  return{x:(imageWidth-w)/2,y:(imageHeight-h)/2,width:w,height:h};
 }
 function match(points,g){if(!points||points.length!==4)return{all:false,matched:[false,false,false,false],points:[]};const displayed=points.map(([x,y])=>[g.video.x+x*g.video.scale,g.video.y+y*g.video.scale]);const matched=displayed.map((p,i)=>{const z=g.zones?.[i];return z?p[0]>=z.x&&p[0]<=z.x+z.width&&p[1]>=z.y&&p[1]<=z.y+z.height:Math.abs(p[0]-g.targets[i][0])<=g.half&&Math.abs(p[1]-g.targets[i][1])<=g.half;});return{all:matched.every(Boolean),matched,points:displayed};}
-const api={layout,match,cameraCrop};root.ScanGeometry=api;if(typeof module!=='undefined')module.exports=api;
+// Compare movement with the printed mark span, independent of camera aspect/crop.
+function steady(points,previous){
+ if(!points||!previous||points.length!==4||previous.length!==4)return false;
+ const span=Math.hypot(Math.max(...points.map(p=>p[0]))-Math.min(...points.map(p=>p[0])),Math.max(...points.map(p=>p[1]))-Math.min(...points.map(p=>p[1])));
+ const drift=points.map((p,i)=>Math.hypot(p[0]-previous[i][0],p[1]-previous[i][1]));
+ const edge=(p,i)=>Math.hypot(p[i][0]-p[(i+1)%4][0],p[i][1]-p[(i+1)%4][1]);
+ return Math.max(...drift)<=Math.max(4,span*.045)&&points.every((_,i)=>Math.abs(edge(points,i)/Math.max(1,edge(previous,i))-1)<.12);
+}
+const api={layout,match,cameraCrop,steady};root.ScanGeometry=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

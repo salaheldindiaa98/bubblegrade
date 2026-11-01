@@ -1,39 +1,27 @@
-# BubbleGrade — GitHub Pages edition v7
+# BubbleGrade — GitHub Pages edition v8
 
-Upload ALL 17 files from this folder to your existing repository root, replacing matching files. Keep index.html at the root. Commit the upload, wait for GitHub Pages deployment to complete, then reload the site. Do not clear site data: your browser holds your quizzes and grades.
+Upload all 17 extracted files to your existing repository root, replacing matching filenames. No deletion first. Commit, wait for GitHub Pages deployment, close the old scanner tab and reopen the same HTTPS site. Check LIVE SCAN · v8. Do not clear browser data: the same storage keys retain your quizzes, calibrated layouts, rosters, absences, photos and scores.
 
-For a new installation, enable Settings → Pages → Deploy from a branch → main → /(root). Use the HTTPS URL shown by GitHub on your phone. No API key, database, paid service or build command is needed.
+For a new installation: Settings → Pages → Deploy from a branch → main → /(root). No database, API key, paid service or npm build is needed.
 
-## Larger scanner
+## Camera and capture
 
-The camera now fills the portrait screen, including landscape camera streams, with compact student details and controls over the image. Numbered corner targets account for the crop and scale. Align all four printed registration squares, hold steady, then remove the paper fully before placing the next. The student's displayed identity is accepted by positioning the paper. Change student pauses capture while searching by serial or ID.
+Full frame is the default and shows the whole source image without software cropping. The camera sits between student details and controls. Fill screen is available if you prefer cropped edge-to-edge video. The app requests a portrait 3:4 stream on phones and resets hardware zoom to 1× where supported. Full frame may show borders if your phone supplies a landscape stream. Camera permissions, actual lens selection and image quality depend on the phone/browser.
 
-Choose a quiz, enter its key, import students and mark absences. Students → View lab narrows the roster; Scan this lab starts that group. Start a camera session to choose all students, a lab or lecture, a specific student/rescan, or anonymous validation. Rescan replaces a saved score; export Excel again to get an updated workbook. Anonymous tests save no grade or photo.
+Automatic detection checks every 250 ms and uses two consistent detections with greater hand-motion tolerance. All four marks must remain visible inside the large boxes. Remove each paper completely before the next. Clear lighting and readable marks still matter. Capture now and image uploads remain available.
 
-Share quiz / merge scans exchanges quiz setups and combines instructor result files. Everyone can create their own quizzes. Browser storage is local to each device and site address. Back up workspace before moving devices or browsers. Keep rosters, answer keys, result packets and backups out of the public repository.
+## Student controls
 
-Browser layout QA used a simulated wide camera. Validate your printed sheet, camera and lighting before official marking. This independent app is not affiliated with ZipGrade.
+Previous student / Next student navigate within the selected lab or lecture without changing attendance or grades. Absent & next student marks absence and advances to the next present, unscanned student. Previous can return to an absent student; Mark present restores them. Visiting an already-scanned student preserves their grade and pauses capture until you explicitly choose Rescan. Replacement happens only when the new result saves successfully.
 
-## v5 automatic capture fix
+Manual Next is the default after a paper saves. Turn on Auto-next for hands-free progression through present, unscanned students. Auto scan controls automatic image capture independently. Anonymous validation saves no grade or photo and has no student navigation.
 
-Camera capture now reads precisely the portrait region shown on screen, instead of the hidden full landscape camera frame. This fixes the spacing rejection that could keep all four guides yellow while the page looked aligned. It also shows a detection/focus message when no four-square set is found.
+## Quiz and grading workflow
 
-Upload all 17 extracted files to the repository root, replacing matching files, then Commit changes. Do not delete the old files first. Wait for Pages deployment, close the old scanner tab and reopen the same HTTPS site. Do not clear browser data. Existing quizzes, layouts, rosters and saved grades use the same storage keys.
+Choose/create a quiz, calibrate the printed sheet, set its answer key, import students and mark absences. Start a camera session and select a lab or lecture. Review multiple, blank and faint answers, then export Excel again for the latest grades. A previously downloaded workbook is not modified automatically.
 
-Verified with generated-camera regression tests and two consecutive automatic browser captures. Actual phone lighting, focus and calibrated paper still need testing.
+Share quiz / merge scans exchanges quiz setup and instructor results manually. All records are local to the current device/browser/site address. Back up workspace to retain or transfer records. Never add real rosters, results, backups or answer keys to a public source repository. This independent app is not affiliated with ZipGrade.
 
-## v6: gray / blurred registration square detection
+## Verification
 
-Live capture uses local contrast near the calibrated corner targets and selects a coherent four-square set. This handles gray, softened squares instead of requiring a fixed black pixel value. Barcode and middle-square distractors are checked. Displaced paper receives a detected-corner count and movement hint. Automatic capture still requires all four targets matched and a steady paper.
-
-Upload all 17 extracted files to the repository root, replacing matching names; no deletion first. Commit, wait for GitHub Pages, close the old tab and reopen the same site. Confirm LIVE SCAN · v6 at the top. Keep browser data: existing storage keys and scores are retained.
-
-Validated with blurred gray generated sheets, existing optical/queue/export regressions, and local browser replay of screenshot pixels. Replay detected four corners and captured after moving the paper upward. This verifies detection and capture; it is not a physical-phone test or a validation of the actual student's grade. No supplied screenshots, roster records or quiz data are included in this package.
-
-## v7: larger, more forgiving corner boxes
-
-The tiny center squares are removed. Put each printed square anywhere inside its large numbered box; centering is unnecessary. The visible box is exactly the accepted area. Targets stay on-screen and outside controls. A 390×844 portrait test uses 128×128 boxes instead of 56×56, and a vertically displaced paper automatically scanned twice in the browser test.
-
-Upload all 17 files into your existing repository root, replacing matching files. No deletion first. Commit, wait for Pages deployment and reopen the same site. Confirm LIVE SCAN · v7. Do not clear browser data: existing quizzes and results use the same storage keys.
-
-Geometry, detection, queue, scoring and export checks pass. Physical-phone alignment should be retested.
+Automated tests cover full-frame edges for portrait/landscape sources, normal hand movement, abrupt movement rejection, group navigation, absence handling, protected rescans, save failure recovery, detection, scoring and Excel export. Browser QA used a synthetic moving camera to check captures, navigation, absence restoration, manual/auto advance and view switching. Physical-phone behavior still needs checking.

@@ -12,8 +12,8 @@ function migrate(){state.instructor=state.instructor||'';for(const e of state.ex
 migrate();
 let scannerOpen=false,scannerPreview=false,scannerPaused=false,scannerLookupOpen=false,scannerNative=false,scannerNotice='',autoReadyAt=0;
 let session={active:false,mode:'queue',studentId:null,confirmed:null,source:'camera'},testResult=null,testPhoto=null,pendingTransfer=null;
-const targetStudent=()=>session.mode==='student'?exam().students.find(s=>s.id===session.studentId)||null:session.mode==='anonymous'?null:nextStudent();
-const confirmedTarget=()=>session.active&&(scannerOpen&&!scannerPreview?!scannerPaused&&!scannerLookupOpen:session.confirmed===(session.mode==='anonymous'?'anonymous':targetStudent()?.id));
+const targetStudent=()=>scannerOpen&&session.mode==='queue'&&session.cameraStudentId?exam().students.find(s=>s.id===session.cameraStudentId)||null:session.mode==='student'?exam().students.find(s=>s.id===session.studentId)||null:session.mode==='anonymous'?null:nextStudent();
+const confirmedTarget=()=>session.active&&(scannerOpen&&!scannerPreview?!scannerPaused&&!scannerLookupOpen:session.confirmed===(session.mode==='anonymous'?'anonymous':targetStudent()?.id))&&(!scannerOpen||typeof scannerCanCapture!=='function'||scannerCanCapture());
 const groupLabel=(g=exam().scanGroup)=>!g||g.type==='all'?'All students':(g.type==='lecture'?'Lecture: ':'Lab: ')+g.value;
 const currentResult=id=>testResult?.id===id?testResult:exam().results.find(r=>r.id===id);
 
@@ -57,22 +57,22 @@ function ensureScan(){if(!keyReady()){toast('Complete the answer key first.');re
 async function startCamera(){
  if(!ensureScan())return;
  if(!navigator.mediaDevices?.getUserMedia){toast('Camera needs a secure HTTPS browser. Use your hosted link, or Upload papers.');return;}
- scannerOpen=true;scannerPreview=false;scannerPaused=false;scannerLookupOpen=false;autoReadyAt=Date.now()+1800;render();requestScannerFullscreen();
- try{stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:window.innerHeight>window.innerWidth?1080:1920},height:{ideal:window.innerHeight>window.innerWidth?1920:1080}}});
- if(!scannerOpen){stream.getTracks().forEach(t=>t.stop());stream=null;return;}needsRemoval=false;lastPts=null;stableFrames=0;render();timer=setInterval(autoTick,650);setStatus('Check the student above. Place each printed square anywhere inside its large box and hold steady.');
+ scannerOpen=true;scannerPreview=false;scannerPaused=false;scannerLookupOpen=false;autoReadyAt=Date.now()+1000;render();requestScannerFullscreen();
+ try{stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:window.innerHeight>window.innerWidth?1080:1920},height:{ideal:window.innerHeight>window.innerWidth?1920:1080},aspectRatio:{ideal:window.innerHeight>window.innerWidth?3/4:4/3}}});
+ if(!scannerOpen){stream.getTracks().forEach(t=>t.stop());stream=null;return;}await resetCameraZoom();needsRemoval=false;lastPts=null;stableFrames=0;render();timer=setInterval(autoTick,250);setStatus('Check the student above. Place each printed square anywhere inside its large box and hold steady.');
  }catch(err){stopCamera();render();setStatus(err.name==='NotAllowedError'?'Camera permission was denied. Allow it in browser settings or use Upload papers.':'The camera could not start. Close other camera apps or use Upload papers.',true);toast('Camera unavailable. You can still upload photos.');}
 }
 function stopCamera(){clearInterval(timer);timer=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;needsRemoval=false;stableFrames=0;scannerOpen=false;scannerPreview=false;scannerLookupOpen=false;scannerPaused=false;if(typeof closeScannerSurface==='function')closeScannerSurface();}
 function cameraCanvas(max=1500){
  const v=$('#scannerVideo')||$('#camera');if(!v?.videoWidth)throw Error('Wait for the camera preview to appear.');
- const stage=scannerOpen?$('#scannerStage'):null,crop=stage?.clientWidth&&stage?.clientHeight?ScanGeometry.cameraCrop(v.videoWidth,v.videoHeight,stage.clientWidth,stage.clientHeight):{x:0,y:0,width:v.videoWidth,height:v.videoHeight};
+ const stage=scannerOpen?$('#scannerStage'):null,crop=stage?.clientWidth&&stage?.clientHeight?ScanGeometry.cameraCrop(v.videoWidth,v.videoHeight,stage.clientWidth,stage.clientHeight,exam().cameraFit==='cover'?'cover':'contain'):{x:0,y:0,width:v.videoWidth,height:v.videoHeight};
  const c=document.createElement('canvas'),scale=Math.min(1,max/Math.max(crop.width,crop.height));c.width=Math.round(crop.width*scale);c.height=Math.round(crop.height*scale);
  c.getContext('2d',{willReadFrequently:true}).drawImage(v,crop.x,crop.y,crop.width,crop.height,0,0,c.width,c.height);return c;
 }
 function resizedCanvas(c,max){let k=Math.min(1,max/Math.max(c.width,c.height)),d=document.createElement('canvas');d.width=Math.round(c.width*k);d.height=Math.round(c.height*k);d.getContext('2d',{willReadFrequently:true}).drawImage(c,0,0,d.width,d.height);return d;}
 function findPoints(c,guided=false){
  const d=resizedCanvas(c,800),image=d.getContext('2d',{willReadFrequently:true}).getImageData(0,0,d.width,d.height),g=guided?scannerGeometry(c):null;
- const hints=g?{targets:g.targets.map(([x,y])=>[(x-g.video.x)/g.video.scale*d.width/c.width,(y-g.video.y)/g.video.scale*d.height/c.height]),radius:g.searchRadius/g.video.scale*d.width/c.width}:null;
+ const hints=g?{targets:g.targets.map(([x,y])=>[(x-g.video.x)/g.video.scale*d.width/c.width,(y-g.video.y)/g.video.scale*d.height/c.height]),radius:g.searchRadius/g.video.scale*d.width/c.width,minSpan:g.fit==='contain'?.12:.24}:null;
  const p=hints?OMR.guidedMarkers(image,hints):OMR.markers(image);return p?.map(([x,y])=>[x*c.width/d.width,y*c.height/d.height]);
 }
 async function autoTick(){
@@ -88,8 +88,8 @@ async function autoTick(){
  if(Date.now()<autoReadyAt){stableFrames=0;lastPts=null;setStatus('Check the displayed student. Capture starts when the paper is aligned and steady.');return;}
  if(!confirmedTarget()){stableFrames=0;return;}
  if(scannerOpen&&!guides.all){stableFrames=0;lastPts=null;setStatus(guides.hint||'Four squares detected. Move the paper so each square is inside its corner target.');return;}
- if(lastPts&&p.every((v,i)=>Math.hypot(v[0]-lastPts[i][0],v[1]-lastPts[i][1])<c.width*.012))stableFrames++;else stableFrames=0;lastPts=p;
- if(stableFrames>=2){stableFrames=0;await processCapture(c,p,true);}else setStatus('Four corners matched. Hold steady…');
+ if(ScanGeometry.steady(p,lastPts))stableFrames++;else stableFrames=0;lastPts=p;
+ if(stableFrames>=1){stableFrames=0;await processCapture(c,p,true);}else setStatus('Four corners matched. Reading…');
  }catch(err){setStatus(err.message,true);}
 }
 async function capture(){if(busy||!ensureScan())return;try{const c=cameraCanvas(),p=findPoints(c,true);if(p)await processCapture(c,p);else manualAlign(c);}catch(err){toast(err.message);}}
@@ -101,7 +101,7 @@ async function processCapture(c,p,automatic=false){
   const now=new Date().toISOString(),r={id:uid(),studentId:anonymous?null:st.id,at:now,updatedAt:now,instructor:state.instructor||'Unnamed instructor',answers:data.answers,blankReviewed:false,blankCredit:0,imgId:null,points:p,imageW:c.width,imageH:c.height,threshold:e.threshold};
   if(anonymous){testResult=r;testPhoto=c.toDataURL('image/jpeg',.82);session.confirmed=null;needsRemoval=true;render();await openReview(r.id);setStatus('Anonymous test only. No grade or photo has been saved.');return;}
   r.imgId=uid();try{await photoPut(r.imgId,c.toDataURL('image/jpeg',.82));}catch{r.imgId=null;toast('Score saved, but photo storage is unavailable.');}
-  const previousResults=e.results.slice(),wasAbsent=st.absent,old=Gradebook.putResult(e,r);st.absent=false;e.cursor=null;session.confirmed=null;needsRemoval=true;absentFrames=0;lastCapture=Date.now();autoReadyAt=Date.now()+1800;scannerNotice=`${old?'Updated':'Saved'} serial ${st.serial} · ${score(r).score}/${score(r).max}${score(r).pending?' · review needed':''}`;if(!persist()){e.results=previousResults;st.absent=wasAbsent;if(r.imgId)photoDelete(r.imgId);throw Error('The new score could not be saved. The previous score was kept. Back up and free browser storage.');}if(old?.imgId)photoDelete(old.imgId);if(navigator.vibrate)navigator.vibrate(60);
+  const previousResults=e.results.slice(),previousCursor=e.cursor,previousSelection=session.cameraStudentId,previousPause=scannerPaused,previousRescan=session.rescanAllowed,wasAbsent=st.absent,old=Gradebook.putResult(e,r);st.absent=false;e.cursor=null;session.confirmed=null;if(scannerOpen&&typeof scannerAfterCapture==='function')scannerAfterCapture(st);needsRemoval=true;absentFrames=0;lastCapture=Date.now();autoReadyAt=Date.now()+800;scannerNotice=`${old?'Updated':'Saved'} serial ${st.serial} · ${score(r).score}/${score(r).max}${score(r).pending?' · review needed':''}`;if(!persist()){e.results=previousResults;e.cursor=previousCursor;session.cameraStudentId=previousSelection;scannerPaused=previousPause;session.rescanAllowed=previousRescan;st.absent=wasAbsent;if(r.imgId)photoDelete(r.imgId);throw Error('The new score could not be saved. The previous score was kept. Back up and free browser storage.');}if(old?.imgId)photoDelete(old.imgId);if(navigator.vibrate)navigator.vibrate(60);
   setStatus(`${old?'Updated':'Saved'} serial ${st.serial}: ${st.name}. Remove this paper, check the next student and align the next paper.`);render();if(e.reviewMode==='each')await openReview(r.id);else toast(`Serial ${st.serial} ${old?'updated':'saved'} · ${score(r).pending} answers to review`);
  }catch(err){setStatus(err.message,true);toast(err.message);}finally{busy=false;if(typeof syncScanner==='function')syncScanner();}
 }
