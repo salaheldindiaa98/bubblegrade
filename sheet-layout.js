@@ -1,0 +1,19 @@
+/* Printable layouts and their calibration are generated together. */
+(function(root){'use strict';
+const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function settings(value={}){const c={count:20,options:4,paper:'A4',title:'Answer sheet',subtitle:'',version:'A',name:true,studentId:true,serial:true,lab:false,instructions:true,logo:'',...value};for(const k of ['title','subtitle','version','paper'])c[k]=String(c[k]??'').slice(0,k==='title'?50:k==='subtitle'?70:12);c.logo=typeof c.logo==='string'&&/^data:image\/(png|jpeg);base64,/.test(c.logo)&&c.logo.length<2100000?c.logo:'';return c;}
+function make(value){const c=settings(value),n=Number(c.count),options=Number(c.options);if(!Number.isInteger(n)||n<1||n>100||!Number.isInteger(options)||options<3||options>5)throw Error('Choose 1–100 questions and 3–5 choices.');if(!['A4','A5','Embedded'].includes(c.paper))throw Error('Choose A4, A5 or Embedded.');if(c.logo&&!/^data:image\/(png|jpeg);base64,/.test(c.logo))throw Error('Use a PNG or JPEG logo.');
+const w=800,h=c.paper==='Embedded'?900:1132,cols=n>50?4:2,rows=Math.ceil(n/cols),margin=76,colWidth=(w-2*margin)/cols,dx=cols===4?23:38,dy=Math.min(56,(h-365)/Math.max(1,rows-1)),r=cols===4?8:Math.max(8,Math.min(11,dy*.36));
+const t={name:`${c.paper} · ${n} questions`,w,h,options,markers:[[32,32],[w-32,32],[w-32,h-32],[32,h-32]],questions:[],native:true,layout:{schema:1,...c,count:n,options}};
+for(let i=0;i<n;i++){const col=Math.floor(i/rows),row=i%rows;t.questions.push({bubbles:Array.from({length:options},(_,j)=>[margin+col*colWidth+30+j*dx,280+row*dy]),r});}return t;}
+function svg(t,title='',marks=null){const c=settings(t.layout),w=t.w,h=t.h;let out=`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="100%" height="100%" fill="white"/>`;
+t.markers.forEach(([x,y])=>out+=`<rect x="${x-12}" y="${y-12}" width="24" height="24" fill="#111"/>`);
+if(c.logo)out+=`<image x="74" y="70" width="42" height="42" xlink:href="${escape(c.logo)}"/>`;
+out+=`<g font-family="Arial,sans-serif" fill="#111"><text x="${c.logo?130:74}" y="100" font-size="24" font-weight="bold">${escape((c.title||title||'Answer sheet').slice(0,50))}</text><text x="74" y="128" font-size="13">${escape(c.subtitle.slice(0,70))}${c.subtitle?' · ':''}Version ${escape(String(c.version).slice(0,12))}</text>`;
+const fields=[['name','Name'],['studentId','Student ID'],['serial','Serial'],['lab','Lab / lecture']].filter(([k])=>c[k]);fields.forEach(([,label],i)=>{const x=74+(i%2)*330,y=170+Math.floor(i/2)*34;out+=`<text x="${x}" y="${y}" font-size="12">${label}:</text><path d="M${x+85} ${y+2}h205" stroke="#444" stroke-width=".8"/>`;});
+if(c.instructions)out+='<text x="74" y="239" font-size="11" fill="#555">Fill one bubble completely. Keep all four black squares visible.</text>';
+t.questions.forEach((q,i)=>{out+=`<text x="${q.bubbles[0][0]-20}" y="${q.bubbles[0][1]+4}" font-size="12" text-anchor="end">${i+1}</text>`;q.bubbles.forEach(([x,y],j)=>{const fill=marks?.[i]?.includes(j);out+=`<circle cx="${x}" cy="${y}" r="${q.r}" stroke="#333" stroke-width="1.2" fill="${fill?'#111':'white'}"/>`;if(!fill)out+=`<text x="${x}" y="${y+3}" font-size="${q.r<10?8:10}" text-anchor="middle" fill="#888">${String.fromCharCode(65+j)}</text>`;});});
+out+=`<text x="74" y="${h-65}" font-size="10" fill="#555">${t.questions.length} questions · ${t.options} choices · Print at actual size</text></g></svg>`;return out;}
+const api={settings,make,svg};root.SheetLayout=api;if(typeof module!=='undefined')module.exports=api;
+if(root.OMR){const original=root.OMR.svg;root.OMR.svg=(t,title,marks)=>t.layout?.schema===1?svg(t,title,marks):original(t,title,marks);}
+})(typeof window!=='undefined'?window:globalThis);

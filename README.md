@@ -1,33 +1,42 @@
-# BubbleGrade — GitHub Pages edition v9
+# BubbleGrade v10
 
-Upload all 17 extracted files to your existing repository root, replacing matching filenames. No deletion first. Commit, wait for GitHub Pages deployment, close the old scanner tab and reopen the same HTTPS site. Check LIVE SCAN · v9. Do not clear browser data: the same storage keys retain your quizzes, calibrated layouts, rosters, absences, photos and scores.
+Free, browser-local optical mark grading. The production website is buildless HTML/CSS/JavaScript at the repository root. It runs on HTTPS static hosting, including GitHub Pages. Camera grading and Excel export need no paid API or shared database. Google Drive setup sharing is optional.
 
-For a new installation: Settings → Pages → Deploy from a branch → main → /(root). No database, API key, paid service or npm build is needed.
+## Current workflow
 
-## Camera and capture
+The three main sections are **Quizzes, Students and Results**. Open a quiz to edit its key, customize its sheet, or start a scan. Students and results always show the quiz selected in the breadcrumb picker.
 
-Full frame is the default and shows the whole source image without software cropping. The camera sits between student details and controls. Fill screen is available if you prefer cropped edge-to-edge video. The app requests a portrait 3:4 stream on phones and resets hardware zoom to 1× where supported. Full frame may show borders if your phone supplies a landscape stream. Camera permissions, actual lens selection and image quality depend on the phone/browser.
+1. **Set up a sheet.** Generate 1–100 questions with 3–5 choices, A4/A5/Embedded format, title, label, version, selected student fields, instructions and an optional PNG/JPEG logo. Preview before choosing **Use this layout**. The printed image and calibration come from the same geometry. Print the selected version and check the answer key. Existing calibrated sheets and quizzes with saved grades are protected; create a printable copy to change geometry.
+2. **Use an existing sheet.** Customize → Use an existing printed sheet. Import PNG/JPEG or page 1 of a PDF, confirm four reference-square centers clockwise, and map each bubble block. A ZipGrade custom-form code alone is insufficient. Existing v9 custom calibration, baseline data and blue-ink reading behavior are retained.
+3. **Set the key and points.** One correct answer per question. An incomplete key blocks grading/export.
+4. **Add students.** Import XLSX/CSV/TSV; map Serial, ID, Name, Lab and optional Lecture. Serial numbers are unique across a quiz. Filter a lab in Students to mark absences. Handwritten/bubbled student IDs are not read automatically.
+5. **Choose a grading session.** Select all students, a lab, or a lecture; select queue, a specific student/rescan, or anonymous validation. The full-screen camera shows name, serial and ID before capture. Change by serial/ID/name before placing a paper. Previous/Next lets you navigate the group; absence, rescan, pause, view-fit and other controls live in Scan settings.
+6. **Scan.** Auto capture accepts four aligned squares after two consistent frames. Large visible corner targets define the full acceptance windows. Full frame is the default and does not apply software cropping. Fill screen is an explicit setting; hardware lens behavior depends on the phone. Remove each paper before the next. Existing grades remain protected unless rescan is explicitly enabled; replacement is saved atomically.
+7. **See the grade.** Scan settings → Show grade after each scan is on by default. A saved grade card waits for Continue/Next; it shows provisional status and opens flagged answers. Resolving a flag updates the displayed score. Review-each mode opens the full review directly. Turning the grade option off allows continuous grading without score cards. Auto-next still requires paper removal. Uploaded papers can also pause on their score/review.
+8. **Review and export.** Choose the intended answer for multiple marks; assign an answer, no credit, or group credit for blanks; review faint marks. Results can filter papers needing review. Export Excel with one student row, lab sheets, question decisions and provisional status. Export again after changing a score; downloaded workbooks are not modified in place.
 
-Automatic detection checks every 250 ms and uses two consistent detections with greater hand-motion tolerance. All four marks must remain visible inside the large boxes. Remove each paper completely before the next. Clear lighting and readable marks still matter. Capture now and image uploads remain available.
+Anonymous tests use only transient memory, never the gradebook/photo database, backups or exports. A scan can be reviewed or re-read from its stored original. Results → Re-read saved photos previews repairs and preserves original records on failed saves, unavailable photos or stale previews.
 
-## Student controls
+## Google Drive: independent exam sharing
 
-Previous student / Next student navigate within the selected lab or lecture without changing attendance or grades. Absent & next student marks absence and advances to the next present, unscanned student. Previous can return to an absent student; Mark present restores them. Visiting an already-scanned student preserves their grade and pauses capture until you explicitly choose Rescan. Replacement happens only when the new result saves successfully.
+See [GOOGLE_DRIVE_SETUP.md](GOOGLE_DRIVE_SETUP.md) for the one-time Google Cloud configuration and exact workflow. `drive-config.js` deliberately has empty public identifiers; live sign-in requires your Web OAuth client ID, restricted browser API key and project number. No client secret belongs in the website.
 
-Manual Next is the default after a paper saves. Turn on Auto-next for hands-free progression through present, unscanned students. Auto scan controls automatic image capture independently. Anonymous validation saves no grade or photo and has no student navigation.
+The owner explicitly uploads only the sheet/calibration, answer key, points and optional roster. Share with invited Google accounts or anyone with the link, optionally with password encryption. Colleagues import independent copies; their grades, attendance and paper photos stay on their own device and never sync back. Existing matching copies retain grades; changed keys/layouts create separate copies. Setup sync is manual. Google accounts provide authorization for Drive; there is no separate BubbleGrade password/account database.
 
-## Quiz and grading workflow
+Use a website that colleagues can access, such as the public GitHub Pages installation, when generating exam links. A public Drive file does not change a private website's access controls. Optional manual result exchange remains a separate, explicit export/import action.
 
-Choose/create a quiz, calibrate the printed sheet, set its answer key, import students and mark absences. Start a camera session and select a lab or lecture. Review multiple, blank and faint answers, then export Excel again for the latest grades. A previously downloaded workbook is not modified automatically.
+## Storage and updating
 
-Share quiz / merge scans exchanges quiz setup and instructor results manually. All records are local to the current device/browser/site address. Back up workspace to retain or transfer records. Never add real rosters, results, backups or answer keys to a public source repository. This independent app is not affiliated with ZipGrade.
+The existing localStorage key `bubblegrade.v1` and IndexedDB `bubblegrade-photos` are retained. Metadata, grades and paper photos are specific to this browser and website origin. Back up the workspace before updating and periodically while grading. Clearing site data can delete local records. Signing into Google does not back up grades. Moving between Sites and GitHub Pages requires explicit backup/restore.
 
-## Filled answers and saved-photo repair
+For GitHub Pages, use the complete release ZIP, whose assets are flattened to the repository root. Upload **all its contents** into the root of the existing repository, replacing same-named files in one commit. Do not delete the old files first. Enable Settings → Pages → Deploy from branch → main → /(root), then wait for deployment and refresh. The release retains compatible old file names and includes every new dependency. Never upload classroom backups, rosters, scans, answer keys or result packets to the public source repository.
 
-The v9 reader samples paper outside filled blue bubbles and avoids joining barcode stripes into fake corner squares. Corner selection uses your calibrated sheet proportions. Tracking uses smaller frames while retaining full-resolution grading and saved photos.
+## Validation
 
-Back up your workspace before updating. In Results, choose Re-read saved photos to preview updated detections and scores for this quiz. Keep my manual answer decisions is checked by default. Uncheck it to discard previous overrides and review fresh optical readings. Click Save updated readings only after checking the preview; then review pending answers and export Excel again. Unreadable or missing photos remain unchanged. You can also open a single paper and choose Re-read this photo. No rescanning or recalibration is needed when the saved photo and reference marks are readable.
+Run each `tests/*.test.cjs` with Node. Image regression tests use Sharp from `CODEX_PRIMARY_RUNTIME_NODE_MODULES`; optical/browser code itself has no Node dependency.
 
-## Verification
+Checks cover optical detection and scoring, blue ink/background mapping, barcode distractors, projective distortion, reread decisions/blank credits, failed-save rollback, camera geometry and motion, group navigation, anonymous no-save, grade feedback, Excel and gradebook logic. `sheet-layout.test.cjs` renders and scans 45 layout combinations; `drive-sharing.test.cjs` checks setup-only packets, independent copies, AES-GCM/PBKDF2 passwords, resource keys, ownership and reader-only access with mocked HTTP. Browser QA runs the real app with a synthetic camera and dummy identities: known-answer capture, corrected score feedback, three-section navigation, sheet preview/apply and setup-only import.
 
-The actual custom calibration and all 14 supplied saved photos were checked without false blanks. Multiple marked answers still need review. Synthetic regression checks cover oversized blue fills, barcode corner confusion, perspective, lighting, camera geometry, group navigation, absence handling, saved-score protection and export. Phone-sized browser QA used redacted photos and dummy student identities to verify preview, optional decision reset and individual repair. Physical-phone speed is not yet measured against ZipGrade. The supplied backup, photos and real student records are excluded from this release.
+Live Google OAuth/Picker needs the owner's actual configuration and a second-account test. Camera speed/lens/focus behavior needs testing on physical phones and paper; synthetic checks are not a ZipGrade speed benchmark. Glare, severe curl, low resolution or blur may need recapture/manual decisions.
+
+JavaScript dependencies are bundled locally with licenses alongside the website. PDF import uses PDF.js. BubbleGrade is independent of ZipGrade and is not affiliated with its owner.
